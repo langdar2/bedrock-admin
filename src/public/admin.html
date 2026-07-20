@@ -287,6 +287,16 @@
       $('#inviteUrl').value = result.inviteUrl;
       $('#inviteResult').style.display = 'block';
     });
+
+    // Easter egg: 5x click title
+    let clicks = 0, clickTimer;
+    $('.header h1').style.cursor = 'default';
+    $('.header h1').addEventListener('click', () => {
+      clicks++;
+      clearTimeout(clickTimer);
+      clickTimer = setTimeout(() => clicks = 0, 800);
+      if (clicks >= 5) { clicks = 0; import('/mine.js').then(m => m.launchGame()); }
+    });
   </script>
 </body>
 </html>
