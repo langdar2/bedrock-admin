@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bedrock Admin — Setup</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="container">
+    <div class="card" style="max-width:400px;margin:4rem auto">
+      <h1 style="text-align:center">⛏ Ersteinrichtung</h1>
+
+      <div id="step-register">
+        <p style="color:var(--muted);margin-bottom:1rem" id="setupDesc">Erstelle den ersten Admin-Account</p>
+        <div id="alert" class="alert" style="display:none"></div>
+        <div class="form-group">
+          <label for="username">Benutzername</label>
+          <input type="text" id="username" placeholder="Admin" autocomplete="username" required>
+        </div>
+        <button id="registerBtn" style="width:100%">Passkey registrieren</button>
+      </div>
+
+      <div id="step-recovery" style="display:none">
+        <h2>Recovery-Code</h2>
+        <p style="color:var(--muted);margin-bottom:.5rem">Speichere diesen Code sicher ab. Er wird nur einmal angezeigt!</p>
+        <div class="recovery-code" id="recoveryCode"></div>
+        <button id="continueBtn" style="width:100%;margin-top:1rem">Weiter zum Dashboard</button>
+      </div>
+    </div>
+  </div>
+  <script type="module">
+    import { startRegistration } from 'https://cdn.jsdelivr.net/npm/@simplewebauthn/browser@13/dist/bundle/index.js';
+
+    const alert = document.getElementById('alert');
+    function showAlert(msg, type) { alert.className = `alert alert-${type}`; alert.textContent = msg; alert.style.display = 'block'; }
+
+    const params = new URLSearchParams(location.search);
+    const invite = params.get('invite');
+    if (invite) document.getElementById('setupDesc').textContent = 'Du wurdest eingeladen. Erstelle deinen Account.';
+
+    document.getElementById('registerBtn').addEventListener('click', async () => {
+      const username = document.getElementById('username').value.trim();
+      if (!username) return showAlert('Benutzername eingeben', 'error');
+
+      try {
+        const endpoint = invite ? '/auth/invite/register-options' : '/auth/setup/register-options';
+        const body = invite ? { username, invite } : { username };
+        const optRes = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const opts = await optRes.json();
+        if (opts.error) return showAlert(opts.error, 'error');
+
+        const reg = await startRegistration({ optionsJSON: opts });
+
+        const verifyEndpoint = invite ? '/auth/invite/register-verify' : '/auth/setup/register-verify';
+        const verifyRes = await fetch(verifyEndpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(reg),
+        });
+        const result = await verifyRes.json();
+
+        if (result.verified) {
+          document.getElementById('step-register').style.display = 'none';
+          document.getElementById('step-recovery').style.display = 'block';
+          document.getElementById('recoveryCode').textContent = result.recoveryCode;
+        } else {
+          showAlert(result.error || 'Registrierung fehlgeschlagen', 'error');
+        }
+      } catch (e) {
+        showAlert(e.message || 'Passkey-Registrierung abgebrochen', 'error');
+      }
+    });
+
+    document.getElementById('continueBtn').addEventListener('click', () => { location.href = '/admin.html'; });
+  </script>
+</body>
+</html>

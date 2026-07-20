@@ -1,0 +1,50 @@
+services:
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - admin
+    restart: unless-stopped
+
+  admin:
+    build: .
+    environment:
+      - RP_ID=langdar.mywire.org
+      - RP_NAME=Bedrock Admin
+      - ORIGIN=https://langdar.mywire.org
+      - BEDROCK_DATA_PATH=/bedrock-data
+      - BEDROCK_CONTAINER_NAME=bedrock
+      - SESSION_SECRET=change-me-in-production
+    volumes:
+      - bedrock-data:/bedrock-data
+      - admin-data:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - bedrock
+    restart: unless-stopped
+
+  bedrock:
+    image: itzg/minecraft-bedrock-server
+    container_name: bedrock
+    environment:
+      EULA: "TRUE"
+    ports:
+      - "19132:19132/udp"
+    volumes:
+      - bedrock-data:/data
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+
+volumes:
+  bedrock-data:
+  admin-data:
+  caddy-data:
+  caddy-config:

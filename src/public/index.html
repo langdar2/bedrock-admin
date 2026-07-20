@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bedrock Admin — Login</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="container">
+    <div class="card" style="max-width:400px;margin:4rem auto;text-align:center">
+      <h1>⛏ Bedrock Admin</h1>
+      <p style="color:var(--muted);margin-bottom:1.5rem">Melde dich mit deinem Passkey an</p>
+      <div id="alert" class="alert" style="display:none"></div>
+      <button id="loginBtn" style="width:100%">Mit Passkey anmelden</button>
+    </div>
+  </div>
+  <script type="module">
+    import { startAuthentication } from 'https://cdn.jsdelivr.net/npm/@simplewebauthn/browser@13/dist/bundle/index.js';
+
+    const alert = document.getElementById('alert');
+    function showAlert(msg, type) { alert.className = `alert alert-${type}`; alert.textContent = msg; alert.style.display = 'block'; }
+
+    // Redirect if already logged in
+    const me = await fetch('/auth/me').then(r => r.json());
+    if (me.authenticated) location.href = '/admin.html';
+
+    // Check if setup needed
+    const status = await fetch('/auth/setup/status').then(r => r.json());
+    if (status.needsSetup) location.href = '/setup.html';
+
+    document.getElementById('loginBtn').addEventListener('click', async () => {
+      try {
+        const optRes = await fetch('/auth/login-options', { method: 'POST' });
+        const opts = await optRes.json();
+        const auth = await startAuthentication({ optionsJSON: opts });
+        const verifyRes = await fetch('/auth/login-verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(auth),
+        });
+        const result = await verifyRes.json();
+        if (result.verified) { location.href = '/admin.html'; }
+        else { showAlert(result.error || 'Anmeldung fehlgeschlagen', 'error'); }
+      } catch (e) {
+        showAlert(e.message || 'Passkey-Anmeldung abgebrochen', 'error');
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,3 @@
+langdar.mywire.org {
+	reverse_proxy admin:3000
+}

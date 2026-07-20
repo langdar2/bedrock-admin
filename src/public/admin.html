@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bedrock Admin</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="container">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+      <h1>⛏ Bedrock Admin</h1>
+      <div>
+        <span id="userInfo" style="color:var(--muted);margin-right:1rem"></span>
+        <button class="secondary" id="logoutBtn">Logout</button>
+      </div>
+    </div>
+
+    <div id="alert" class="alert" style="display:none"></div>
+
+    <div class="tabs">
+      <button class="active" data-tab="server">Server</button>
+      <button data-tab="properties">Properties</button>
+      <button data-tab="players">Spieler</button>
+      <button data-tab="worlds">Welten</button>
+      <button data-tab="users">Benutzer</button>
+    </div>
+
+    <!-- Server Tab -->
+    <div class="tab-content active" id="tab-server">
+      <div class="card">
+        <h2>Server-Status</h2>
+        <p id="serverStatus">Lade...</p>
+        <div style="margin-top:1rem;display:flex;gap:.5rem;flex-wrap:wrap">
+          <button class="success" id="btnStart">Starten</button>
+          <button class="danger" id="btnStop">Stoppen</button>
+          <button class="secondary" id="btnRestart">Neustarten</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Properties Tab -->
+    <div class="tab-content" id="tab-properties">
+      <div class="card">
+        <h2>server.properties</h2>
+        <div id="propsForm"></div>
+        <button id="saveProps" style="margin-top:1rem">Speichern</button>
+      </div>
+    </div>
+
+    <!-- Players Tab -->
+    <div class="tab-content" id="tab-players">
+      <div class="card">
+        <h2>Allowlist</h2>
+        <table>
+          <thead><tr><th>Gamertag</th><th>XUID</th><th>VIP</th><th></th></tr></thead>
+          <tbody id="allowlistBody"></tbody>
+        </table>
+        <div class="row" style="margin-top:.75rem">
+          <input type="text" id="newPlayerName" placeholder="Gamertag">
+          <input type="text" id="newPlayerXuid" placeholder="XUID (optional)">
+          <button id="addPlayer">+</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Berechtigungen</h2>
+        <table>
+          <thead><tr><th>XUID</th><th>Stufe</th><th></th></tr></thead>
+          <tbody id="permsBody"></tbody>
+        </table>
+        <div class="row" style="margin-top:.75rem">
+          <input type="text" id="newPermXuid" placeholder="XUID">
+          <select id="newPermLevel"><option>member</option><option>operator</option><option>visitor</option></select>
+          <button id="addPerm">+</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Worlds Tab -->
+    <div class="tab-content" id="tab-worlds">
+      <div class="card">
+        <h2>Welten</h2>
+        <div id="worldsList"></div>
+        <h2 style="margin-top:1rem">Neue Welt erstellen</h2>
+        <div class="row">
+          <input type="text" id="newWorldName" placeholder="Weltname">
+          <input type="text" id="newWorldSeed" placeholder="Seed (optional)">
+          <button id="createWorld">Erstellen</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Users Tab -->
+    <div class="tab-content" id="tab-users">
+      <div class="card">
+        <h2>Admin-Benutzer</h2>
+        <table>
+          <thead><tr><th>Name</th><th>Erstellt</th><th></th></tr></thead>
+          <tbody id="usersBody"></tbody>
+        </table>
+        <button id="inviteBtn" style="margin-top:.75rem">Einladungslink erstellen</button>
+        <div id="inviteResult" style="margin-top:.5rem;display:none">
+          <label>Einladungslink (einmalig gültig):</label>
+          <input type="text" id="inviteUrl" readonly style="user-select:all">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    const $ = s => document.querySelector(s);
+    const $$ = s => document.querySelectorAll(s);
+    const api = (url, opts) => fetch(url, { headers: { 'Content-Type': 'application/json' }, ...opts }).then(r => r.json());
+    const alertEl = $('#alert');
+    function showAlert(msg, type = 'success') { alertEl.className = `alert alert-${type}`; alertEl.textContent = msg; alertEl.style.display = 'block'; setTimeout(() => alertEl.style.display = 'none', 4000); }
+
+    // Auth check
+    const me = await api('/auth/me');
+    if (!me.authenticated) { location.href = '/'; }
+    $('#userInfo').textContent = me.username;
+    $('#logoutBtn').addEventListener('click', async () => { await fetch('/auth/logout', { method: 'POST' }); location.href = '/'; });
+
+    // Tabs
+    $$('.tabs button').forEach(btn => btn.addEventListener('click', () => {
+      $$('.tabs button').forEach(b => b.classList.remove('active'));
+      $$('.tab-content').forEach(t => t.classList.remove('active'));
+      btn.classList.add('active');
+      $(`#tab-${btn.dataset.tab}`).classList.add('active');
+    }));
+
+    // --- Server ---
+    async function loadStatus() {
+      try {
+        const s = await api('/api/server/status');
+        const dot = s.running ? 'running' : 'stopped';
+        const label = s.running ? 'Läuft' : 'Gestoppt';
+        $('#serverStatus').innerHTML = `<span class="status-dot ${dot}"></span>${label} <span style="color:var(--muted)">(${s.status || 'unbekannt'})</span>`;
+      } catch { $('#serverStatus').textContent = 'Status nicht verfügbar'; }
+    }
+    loadStatus();
+
+    for (const action of ['start', 'stop', 'restart']) {
+      $(`#btn${action[0].toUpperCase() + action.slice(1)}`).addEventListener('click', async () => {
+        try {
+          await api(`/api/server/${action}`, { method: 'POST' });
+          showAlert(`Server ${action === 'start' ? 'gestartet' : action === 'stop' ? 'gestoppt' : 'neugestartet'}`);
+          setTimeout(loadStatus, 2000);
+        } catch (e) { showAlert(e.message, 'error'); }
+      });
+    }
+
+    // --- Properties ---
+    let propsComments = [];
+    const KNOWN_PROPS = [
+      { key: 'server-name', label: 'Servername', type: 'text' },
+      { key: 'gamemode', label: 'Spielmodus', type: 'select', options: ['survival', 'creative', 'adventure'] },
+      { key: 'difficulty', label: 'Schwierigkeit', type: 'select', options: ['peaceful', 'easy', 'normal', 'hard'] },
+      { key: 'max-players', label: 'Max. Spieler', type: 'number' },
+      { key: 'online-mode', label: 'Online-Modus', type: 'select', options: ['true', 'false'] },
+      { key: 'allow-list', label: 'Allowlist aktiv', type: 'select', options: ['true', 'false'] },
+      { key: 'default-player-permission-level', label: 'Standard-Berechtigung', type: 'select', options: ['visitor', 'member', 'operator'] },
+      { key: 'view-distance', label: 'Sichtweite', type: 'number' },
+      { key: 'tick-distance', label: 'Simulationsdistanz', type: 'number' },
+      { key: 'player-idle-timeout', label: 'Idle-Timeout (Min)', type: 'number' },
+      { key: 'level-name', label: 'Aktive Welt', type: 'text' },
+      { key: 'level-seed', label: 'Seed', type: 'text' },
+      { key: 'allow-cheats', label: 'Cheats erlauben', type: 'select', options: ['true', 'false'] },
+      { key: 'server-port', label: 'Port (IPv4)', type: 'number' },
+      { key: 'texturepack-required', label: 'Texturepack erforderlich', type: 'select', options: ['true', 'false'] },
+    ];
+    const knownKeys = new Set(KNOWN_PROPS.map(p => p.key));
+
+    async function loadProps() {
+      const data = await api('/api/properties');
+      propsComments = data.comments || [];
+      const form = $('#propsForm');
+      let html = '<h2 style="font-size:1rem;color:var(--muted);margin-bottom:.5rem">Bekannte Einstellungen</h2>';
+      for (const p of KNOWN_PROPS) {
+        const val = data.props[p.key] ?? '';
+        html += `<div class="form-group"><label>${p.label} <code style="color:var(--muted)">${p.key}</code></label>`;
+        if (p.type === 'select') {
+          html += `<select data-prop="${p.key}">${p.options.map(o => `<option${o === val ? ' selected' : ''}>${o}</option>`).join('')}</select>`;
+        } else {
+          html += `<input type="${p.type}" data-prop="${p.key}" value="${val}">`;
+        }
+        html += '</div>';
+      }
+      const extra = Object.entries(data.props).filter(([k]) => !knownKeys.has(k));
+      if (extra.length) {
+        html += '<h2 style="font-size:1rem;color:var(--muted);margin:1rem 0 .5rem">Weitere Einstellungen</h2>';
+        for (const [k, v] of extra) {
+          html += `<div class="form-group"><label><code>${k}</code></label><input type="text" data-prop="${k}" value="${v}"></div>`;
+        }
+      }
+      form.innerHTML = html;
+    }
+    loadProps();
+
+    $('#saveProps').addEventListener('click', async () => {
+      const props = {};
+      $$('[data-prop]').forEach(el => { props[el.dataset.prop] = el.value; });
+      const result = await api('/api/properties', { method: 'PUT', body: JSON.stringify({ props, comments: propsComments }) });
+      showAlert(result.restartRequired ? 'Gespeichert — Neustart erforderlich!' : 'Gespeichert', result.restartRequired ? 'warning' : 'success');
+    });
+
+    // --- Players ---
+    async function loadPlayers() {
+      const list = await api('/api/allowlist');
+      $('#allowlistBody').innerHTML = list.map(p =>
+        `<tr><td>${p.name}</td><td><code>${p.xuid || '—'}</code></td><td>${p.ignoresPlayerLimit ? '✓' : ''}</td><td><button class="danger" data-remove-player="${p.name}">✕</button></td></tr>`
+      ).join('') || '<tr><td colspan="4" style="color:var(--muted)">Keine Spieler</td></tr>';
+      $$('[data-remove-player]').forEach(btn => btn.addEventListener('click', async () => {
+        await api(`/api/allowlist/${btn.dataset.removePlayer}`, { method: 'DELETE' });
+        loadPlayers();
+      }));
+    }
+    loadPlayers();
+
+    $('#addPlayer').addEventListener('click', async () => {
+      const name = $('#newPlayerName').value.trim();
+      if (!name) return;
+      await api('/api/allowlist', { method: 'POST', body: JSON.stringify({ name, xuid: $('#newPlayerXuid').value.trim() }) });
+      $('#newPlayerName').value = ''; $('#newPlayerXuid').value = '';
+      loadPlayers();
+    });
+
+    async function loadPerms() {
+      const list = await api('/api/permissions');
+      $('#permsBody').innerHTML = list.map(p =>
+        `<tr><td><code>${p.xuid}</code></td><td><span class="badge badge-blue">${p.permission}</span></td><td><button class="danger" data-remove-perm="${p.xuid}">✕</button></td></tr>`
+      ).join('') || '<tr><td colspan="3" style="color:var(--muted)">Keine Einträge</td></tr>';
+      $$('[data-remove-perm]').forEach(btn => btn.addEventListener('click', async () => {
+        await api(`/api/permissions/${btn.dataset.removePerm}`, { method: 'DELETE' });
+        loadPerms();
+      }));
+    }
+    loadPerms();
+
+    $('#addPerm').addEventListener('click', async () => {
+      const xuid = $('#newPermXuid').value.trim();
+      if (!xuid) return;
+      await api('/api/permissions', { method: 'POST', body: JSON.stringify({ xuid, permission: $('#newPermLevel').value }) });
+      $('#newPermXuid').value = '';
+      loadPerms();
+    });
+
+    // --- Worlds ---
+    async function loadWorlds() {
+      const data = await api('/api/worlds');
+      $('#worldsList').innerHTML = data.worlds.map(w =>
+        `<div class="world-item"><span>${w} ${w === data.active ? '<span class="badge badge-green">aktiv</span>' : ''}</span>${w !== data.active ? `<button class="secondary" data-activate-world="${w}">Aktivieren</button>` : ''}</div>`
+      ).join('') || '<p style="color:var(--muted)">Keine Welten gefunden</p>';
+      $$('[data-activate-world]').forEach(btn => btn.addEventListener('click', async () => {
+        await api('/api/worlds/activate', { method: 'POST', body: JSON.stringify({ name: btn.dataset.activateWorld }) });
+        showAlert('Welt gewechselt — Neustart erforderlich!', 'warning');
+        loadWorlds();
+      }));
+    }
+    loadWorlds();
+
+    $('#createWorld').addEventListener('click', async () => {
+      const name = $('#newWorldName').value.trim();
+      if (!name) return;
+      const result = await api('/api/worlds', { method: 'POST', body: JSON.stringify({ name, seed: $('#newWorldSeed').value.trim() }) });
+      if (result.error) return showAlert(result.error, 'error');
+      $('#newWorldName').value = ''; $('#newWorldSeed').value = '';
+      showAlert('Welt erstellt');
+      loadWorlds();
+    });
+
+    // --- Users ---
+    async function loadUsers() {
+      const list = await api('/auth/users');
+      $('#usersBody').innerHTML = list.map(u =>
+        `<tr><td>${u.username}</td><td style="color:var(--muted)">${new Date(u.created_at).toLocaleDateString('de')}</td><td>${u.id !== me.id ? `<button class="danger" data-remove-user="${u.id}">✕</button>` : ''}</td></tr>`
+      ).join('');
+      $$('[data-remove-user]').forEach(btn => btn.addEventListener('click', async () => {
+        if (!confirm('Benutzer wirklich löschen?')) return;
+        await api(`/auth/users/${btn.dataset.removeUser}`, { method: 'DELETE' });
+        loadUsers();
+      }));
+    }
+    loadUsers();
+
+    $('#inviteBtn').addEventListener('click', async () => {
+      const result = await api('/auth/invite', { method: 'POST' });
+      $('#inviteUrl').value = result.inviteUrl;
+      $('#inviteResult').style.display = 'block';
+    });
+  </script>
+</body>
+</html>
