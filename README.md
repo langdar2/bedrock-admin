@@ -12,10 +12,15 @@ Web-basiertes Admin-Panel für Minecraft Bedrock Dedicated Server mit Passkey-Au
 - **Einladungssystem** — weitere Admins per Invite-Link hinzufügen
 - **Recovery-Codes** — Zugang wiederherstellen ohne Passkey
 
+## Voraussetzung
+
+Ein laufender Minecraft Bedrock Dedicated Server (z.B. als Docker-Container). Bedrock Admin verbindet sich über den Docker-Socket und das Datenverzeichnis.
+
 ## Quick Start
 
 ```bash
-# docker-compose.yml anpassen (Domain, Session-Secret), dann:
+cp .env.example .env
+# .env anpassen (Domain, Pfade, Session-Secret)
 docker compose up -d
 ```
 
@@ -23,15 +28,15 @@ Beim ersten Aufruf wird der Setup-Wizard angezeigt, um den ersten Admin-Account 
 
 ## Konfiguration
 
-Umgebungsvariablen im `admin`-Service:
+Alle Einstellungen über `.env` (siehe `.env.example`):
 
 | Variable | Beschreibung | Default |
 |---|---|---|
 | `RP_ID` | WebAuthn Relying Party ID (Domain) | `localhost` |
 | `RP_NAME` | Anzeigename | `Bedrock Admin` |
 | `ORIGIN` | Vollständige Origin-URL | `https://{RP_ID}` |
-| `BEDROCK_DATA_PATH` | Pfad zum Bedrock-Datenverzeichnis | `/bedrock-data` |
-| `BEDROCK_CONTAINER_NAME` | Name des Bedrock Docker-Containers | `bedrock` |
+| `BEDROCK_DATA_PATH` | Pfad zum Bedrock-Datenverzeichnis auf dem Host | `/opt/bedrock/data` |
+| `BEDROCK_CONTAINER_NAME` | Name des laufenden Bedrock Docker-Containers | `bedrock` |
 | `SESSION_SECRET` | Secret für Session-Cookies | — |
 
 ## Architektur
