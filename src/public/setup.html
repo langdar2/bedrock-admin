@@ -7,12 +7,11 @@
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-  <div class="container">
-    <div class="card" style="max-width:400px;margin:4rem auto">
-      <h1 style="text-align:center">⛏ Ersteinrichtung</h1>
-
+  <div class="auth-wrapper">
+    <div class="auth-card">
       <div id="step-register">
-        <p style="color:var(--muted);margin-bottom:1rem" id="setupDesc">Erstelle den ersten Admin-Account</p>
+        <h1>Ersteinrichtung</h1>
+        <p id="setupDesc">Erstelle den ersten Admin-Account</p>
         <div id="alert" class="alert" style="display:none"></div>
         <div class="form-group">
           <label for="username">Benutzername</label>
@@ -22,10 +21,10 @@
       </div>
 
       <div id="step-recovery" style="display:none">
-        <h2>Recovery-Code</h2>
-        <p style="color:var(--muted);margin-bottom:.5rem">Speichere diesen Code sicher ab. Er wird nur einmal angezeigt!</p>
+        <h1>Recovery-Code</h1>
+        <p>Speichere diesen Code sicher ab. Er wird nur einmal angezeigt!</p>
         <div class="recovery-code" id="recoveryCode"></div>
-        <button id="continueBtn" style="width:100%;margin-top:1rem">Weiter zum Dashboard</button>
+        <button id="continueBtn" style="width:100%;margin-top:0.5rem">Weiter zum Dashboard</button>
       </div>
     </div>
   </div>

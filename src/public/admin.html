@@ -8,10 +8,10 @@
 </head>
 <body>
   <div class="container">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
-      <h1>⛏ Bedrock Admin</h1>
-      <div>
-        <span id="userInfo" style="color:var(--muted);margin-right:1rem"></span>
+    <div class="header">
+      <h1>Bedrock Admin</h1>
+      <div class="header-right">
+        <span class="user-badge" id="userInfo"></span>
         <button class="secondary" id="logoutBtn">Logout</button>
       </div>
     </div>
@@ -30,10 +30,10 @@
     <div class="tab-content active" id="tab-server">
       <div class="card">
         <h2>Server-Status</h2>
-        <p id="serverStatus">Lade...</p>
-        <div style="margin-top:1rem;display:flex;gap:.5rem;flex-wrap:wrap">
+        <p id="serverStatus" style="color:var(--text-secondary)">Lade...</p>
+        <div class="server-actions">
           <button class="success" id="btnStart">Starten</button>
-          <button class="danger" id="btnStop">Stoppen</button>
+          <button class="danger" id="btnStop" style="border:1px solid var(--red-dim);padding:0.6rem 1.25rem;font-size:0.9rem">Stoppen</button>
           <button class="secondary" id="btnRestart">Neustarten</button>
         </div>
       </div>
@@ -56,7 +56,7 @@
           <thead><tr><th>Gamertag</th><th>XUID</th><th>VIP</th><th></th></tr></thead>
           <tbody id="allowlistBody"></tbody>
         </table>
-        <div class="row" style="margin-top:.75rem">
+        <div class="row" style="margin-top:0.75rem">
           <input type="text" id="newPlayerName" placeholder="Gamertag">
           <input type="text" id="newPlayerXuid" placeholder="XUID (optional)">
           <button id="addPlayer">+</button>
@@ -68,7 +68,7 @@
           <thead><tr><th>XUID</th><th>Stufe</th><th></th></tr></thead>
           <tbody id="permsBody"></tbody>
         </table>
-        <div class="row" style="margin-top:.75rem">
+        <div class="row" style="margin-top:0.75rem">
           <input type="text" id="newPermXuid" placeholder="XUID">
           <select id="newPermLevel"><option>member</option><option>operator</option><option>visitor</option></select>
           <button id="addPerm">+</button>
@@ -81,7 +81,7 @@
       <div class="card">
         <h2>Welten</h2>
         <div id="worldsList"></div>
-        <h2 style="margin-top:1rem">Neue Welt erstellen</h2>
+        <h3 style="margin-top:1.25rem">Neue Welt erstellen</h3>
         <div class="row">
           <input type="text" id="newWorldName" placeholder="Weltname">
           <input type="text" id="newWorldSeed" placeholder="Seed (optional)">
@@ -98,8 +98,8 @@
           <thead><tr><th>Name</th><th>Erstellt</th><th></th></tr></thead>
           <tbody id="usersBody"></tbody>
         </table>
-        <button id="inviteBtn" style="margin-top:.75rem">Einladungslink erstellen</button>
-        <div id="inviteResult" style="margin-top:.5rem;display:none">
+        <button id="inviteBtn" style="margin-top:0.75rem">Einladungslink erstellen</button>
+        <div class="invite-display" id="inviteResult" style="display:none">
           <label>Einladungslink (einmalig gültig):</label>
           <input type="text" id="inviteUrl" readonly style="user-select:all">
         </div>
@@ -134,7 +134,7 @@
         const s = await api('/api/server/status');
         const dot = s.running ? 'running' : 'stopped';
         const label = s.running ? 'Läuft' : 'Gestoppt';
-        $('#serverStatus').innerHTML = `<span class="status-dot ${dot}"></span>${label} <span style="color:var(--muted)">(${s.status || 'unbekannt'})</span>`;
+        $('#serverStatus').innerHTML = `<span class="status-dot ${dot}"></span>${label} <span style="color:var(--text-muted)">(${s.status || 'unbekannt'})</span>`;
       } catch { $('#serverStatus').textContent = 'Status nicht verfügbar'; }
     }
     loadStatus();
@@ -174,10 +174,10 @@
       const data = await api('/api/properties');
       propsComments = data.comments || [];
       const form = $('#propsForm');
-      let html = '<h2 style="font-size:1rem;color:var(--muted);margin-bottom:.5rem">Bekannte Einstellungen</h2>';
+      let html = '<h3>Bekannte Einstellungen</h3>';
       for (const p of KNOWN_PROPS) {
         const val = data.props[p.key] ?? '';
-        html += `<div class="form-group"><label>${p.label} <code style="color:var(--muted)">${p.key}</code></label>`;
+        html += `<div class="form-group"><label>${p.label} <code>${p.key}</code></label>`;
         if (p.type === 'select') {
           html += `<select data-prop="${p.key}">${p.options.map(o => `<option${o === val ? ' selected' : ''}>${o}</option>`).join('')}</select>`;
         } else {
@@ -187,7 +187,7 @@
       }
       const extra = Object.entries(data.props).filter(([k]) => !knownKeys.has(k));
       if (extra.length) {
-        html += '<h2 style="font-size:1rem;color:var(--muted);margin:1rem 0 .5rem">Weitere Einstellungen</h2>';
+        html += '<h3 style="margin-top:1rem">Weitere Einstellungen</h3>';
         for (const [k, v] of extra) {
           html += `<div class="form-group"><label><code>${k}</code></label><input type="text" data-prop="${k}" value="${v}"></div>`;
         }
@@ -207,8 +207,8 @@
     async function loadPlayers() {
       const list = await api('/api/allowlist');
       $('#allowlistBody').innerHTML = list.map(p =>
-        `<tr><td>${p.name}</td><td><code>${p.xuid || '—'}</code></td><td>${p.ignoresPlayerLimit ? '✓' : ''}</td><td><button class="danger" data-remove-player="${p.name}">✕</button></td></tr>`
-      ).join('') || '<tr><td colspan="4" style="color:var(--muted)">Keine Spieler</td></tr>';
+        `<tr><td>${p.name}</td><td><code style="color:var(--text-muted);font-size:0.8rem">${p.xuid || '—'}</code></td><td>${p.ignoresPlayerLimit ? '<span class="badge badge-amber">VIP</span>' : ''}</td><td><button class="danger" data-remove-player="${p.name}">&#x2715;</button></td></tr>`
+      ).join('') || '<tr><td colspan="4" style="color:var(--text-muted)">Keine Spieler</td></tr>';
       $$('[data-remove-player]').forEach(btn => btn.addEventListener('click', async () => {
         await api(`/api/allowlist/${btn.dataset.removePlayer}`, { method: 'DELETE' });
         loadPlayers();
@@ -227,8 +227,8 @@
     async function loadPerms() {
       const list = await api('/api/permissions');
       $('#permsBody').innerHTML = list.map(p =>
-        `<tr><td><code>${p.xuid}</code></td><td><span class="badge badge-blue">${p.permission}</span></td><td><button class="danger" data-remove-perm="${p.xuid}">✕</button></td></tr>`
-      ).join('') || '<tr><td colspan="3" style="color:var(--muted)">Keine Einträge</td></tr>';
+        `<tr><td><code style="color:var(--text-muted);font-size:0.85rem">${p.xuid}</code></td><td><span class="badge badge-blue">${p.permission}</span></td><td><button class="danger" data-remove-perm="${p.xuid}">&#x2715;</button></td></tr>`
+      ).join('') || '<tr><td colspan="3" style="color:var(--text-muted)">Keine Einträge</td></tr>';
       $$('[data-remove-perm]').forEach(btn => btn.addEventListener('click', async () => {
         await api(`/api/permissions/${btn.dataset.removePerm}`, { method: 'DELETE' });
         loadPerms();
@@ -249,7 +249,7 @@
       const data = await api('/api/worlds');
       $('#worldsList').innerHTML = data.worlds.map(w =>
         `<div class="world-item"><span>${w} ${w === data.active ? '<span class="badge badge-green">aktiv</span>' : ''}</span>${w !== data.active ? `<button class="secondary" data-activate-world="${w}">Aktivieren</button>` : ''}</div>`
-      ).join('') || '<p style="color:var(--muted)">Keine Welten gefunden</p>';
+      ).join('') || '<p style="color:var(--text-muted)">Keine Welten gefunden</p>';
       $$('[data-activate-world]').forEach(btn => btn.addEventListener('click', async () => {
         await api('/api/worlds/activate', { method: 'POST', body: JSON.stringify({ name: btn.dataset.activateWorld }) });
         showAlert('Welt gewechselt — Neustart erforderlich!', 'warning');
@@ -272,7 +272,7 @@
     async function loadUsers() {
       const list = await api('/auth/users');
       $('#usersBody').innerHTML = list.map(u =>
-        `<tr><td>${u.username}</td><td style="color:var(--muted)">${new Date(u.created_at).toLocaleDateString('de')}</td><td>${u.id !== me.id ? `<button class="danger" data-remove-user="${u.id}">✕</button>` : ''}</td></tr>`
+        `<tr><td>${u.username}</td><td style="color:var(--text-muted);font-size:0.85rem">${new Date(u.created_at).toLocaleDateString('de')}</td><td>${u.id !== me.id ? `<button class="danger" data-remove-user="${u.id}">&#x2715;</button>` : '<span class="badge badge-green">du</span>'}</td></tr>`
       ).join('');
       $$('[data-remove-user]').forEach(btn => btn.addEventListener('click', async () => {
         if (!confirm('Benutzer wirklich löschen?')) return;
