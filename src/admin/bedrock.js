@@ -68,6 +68,7 @@ export function getActiveWorld() {
 }
 
 export function createWorld(name) {
+  if (!/^[\w -]+$/.test(name)) throw new Error('Invalid world name');
   const worldsDir = join(DATA_PATH, 'worlds');
   const worldPath = join(worldsDir, name);
   if (existsSync(worldPath)) throw new Error('World already exists');
